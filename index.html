@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💕 feliz mes by Kevin Rodirguez</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Fira+Code:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000;
+    --red: #e05555;
+    --red-dim: #e0555544;
+    --red-faint: #e0555512;
+    --text: #f0e8e8;
+    --muted: #7a5050;
+    --accent: #e07a55;
+    --accent-dim: #e07a5544;
+    --border: #2e1818;
+    --surface: #0a0606;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  #matrix-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    opacity: 0.28;
+    pointer-events: none;
+  }
+
+  .page {
+    display: none;
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 40px 20px;
+  }
+  .page.active { display: flex; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 48px 52px;
+    max-width: 520px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 0 60px #e0555508, inset 0 0 40px #00000060;
+    text-align: center;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #e0555520, transparent 50%, #e07a5510);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* Decorative corner brackets */
+  .card-corner {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: var(--red);
+    border-style: solid;
+    opacity: 0.3;
+  }
+  .card-corner.tl { top: 12px; left: 12px; border-width: 1px 0 0 1px; }
+  .card-corner.tr { top: 12px; right: 12px; border-width: 1px 1px 0 0; }
+  .card-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 1px 1px; }
+  .card-corner.br { bottom: 12px; right: 12px; border-width: 0 1px 1px 0; }
+
+  h1 {
+    font-size: 1.55rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .heart {
+    color: var(--red);
+    display: inline-block;
+    animation: pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  .sub {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 28px;
+    line-height: 1.7;
+  }
+
+  .lock-icon {
+    width: 52px; height: 52px;
+    margin: 0 auto 28px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lock-icon svg { width: 100%; height: 100%; }
+
+  .name-input-wrap {
+    margin: 0 0 20px;
+    position: relative;
+  }
+  .name-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1rem;
+    color: var(--text);
+    text-align: center;
+    letter-spacing: 0.12em;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .name-input::placeholder { color: var(--muted); letter-spacing: 0.06em; font-size: 0.82rem; }
+  .name-input:focus { border-color: var(--red); box-shadow: 0 0 18px var(--red-faint); }
+
+  .error-msg {
+    font-size: 0.75rem;
+    color: #c04040;
+    font-family: 'Fira Code', monospace;
+    margin-top: 10px;
+    min-height: 18px;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .error-msg.show { opacity: 1; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 14px 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.06em;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Fill sweep on hover */
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--red-faint);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+  .btn:hover::before { transform: scaleX(1); }
+  .btn:hover { box-shadow: 0 0 22px var(--red-dim); }
+  .btn:disabled { border-color: var(--border); color: var(--muted); cursor: not-allowed; box-shadow: none; }
+  .btn:disabled::before { display: none; }
+
+  .btn-accent {
+    border-color: rgba(255,255,255,0.55);
+    color: #ffffff;
+  }
+  .btn-accent::before { background: rgba(255,255,255,0.06); }
+  .btn-accent:hover { box-shadow: 0 0 22px rgba(255,255,255,0.15); border-color: #fff; }
+
+  .big-text {
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* Roulette — slot-machine style vertical scroller */
+  .roulette-wrap { margin: 20px auto 0; width: 260px; }
+  .roulette-window {
+    height: 192px; /* shows 3 items: 1 selected + 1 above + 1 below */
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px var(--red-faint);
+    position: relative;
+    background: var(--bg);
+  }
+  /* Selection bracket lines */
+  .center-line-top, .center-line-bottom {
+    position: absolute;
+    left: 16px; right: 16px;
+    height: 1px;
+    background: var(--red);
+    opacity: 0.2;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .center-line-top  { top: calc(50% - 32px); }
+  .center-line-bottom { top: calc(50% + 32px); }
+  /* Fade edges for depth */
+  .roulette-window::before,
+  .roulette-window::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 72px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .roulette-window::before { top: 0; background: linear-gradient(to bottom, var(--bg) 5%, transparent); }
+  .roulette-window::after  { bottom: 0; background: linear-gradient(to top, var(--bg) 5%, transparent); }
+
+  .roulette-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    will-change: transform;
+  }
+  .roulette-item {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 400;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    width: 260px;
+    opacity: 0.35;
+    transition: color 0.2s, opacity 0.2s, font-size 0.2s, font-weight 0.2s;
+  }
+  .roulette-item.near     { color: var(--text); opacity: 0.6; }
+  .roulette-item.selected { color: var(--red); opacity: 1; font-size: 1.05rem; font-weight: 600; }
+
+  .co-flag {
+    width: 22px;
+    height: 15px;
+    display: inline-flex;
+    flex-direction: column;
+    margin-right: 8px;
+    border-radius: 2px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.18);
+    vertical-align: -2px;
+  }
+  .co-flag span:nth-child(1) { background: #fcd116; flex: 2; }
+  .co-flag span:nth-child(2) { background: #003893; flex: 1; }
+  .co-flag span:nth-child(3) { background: #ce1126; flex: 1; }
+
+  .roulette-btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--red-faint);
+    border: 1px solid var(--red);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.9rem;
+    color: var(--red);
+    margin: 16px 0 0;
+    font-weight: 500;
+  }
+
+  .time-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 22px 0 28px;
+    text-align: left;
+  }
+  .time-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.92rem;
+    color: var(--muted);
+    background: transparent;
+    position: relative;
+    overflow: hidden;
+  }
+  .time-option::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--red-faint);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s ease;
+  }
+  .time-option:hover { border-color: var(--red); color: var(--text); }
+  .time-option:hover::before { transform: scaleX(1); }
+  .time-option.selected { border-color: var(--red); color: var(--red); background: var(--red-faint); }
+  .time-option.selected .radio-dot { border-color: var(--red); }
+  .time-option.selected .radio-dot::after { opacity: 1; transform: scale(1); }
+
+  .radio-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid var(--muted);
+    flex-shrink: 0;
+    position: relative;
+    transition: border-color 0.2s;
+    z-index: 1;
+  }
+  .radio-dot::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: var(--red);
+    opacity: 0;
+    transform: scale(0.4);
+    transition: all 0.2s ease;
+  }
+  .time-label { z-index: 1; }
+
+  .final-msg {
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.55;
+    color: var(--text);
+    margin-bottom: 22px;
+  }
+  .final-time { color: var(--red); }
+
+  .final-addr {
+    font-size: 1rem;
+    color: var(--text);
+    padding: 16px 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Fira Code', monospace;
+    line-height: 1;
+  }
+  .final-addr .sym { color: var(--red); }
+
+  .gif-area {
+    margin-top: 24px;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .gif-area img { width: 100%; display: block; border-radius: 12px; }
+
+  .scanlines {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(224,85,85,0.012) 2px, rgba(224,85,85,0.012) 4px);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadeUp 0.5s ease forwards; }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-6px); }
+    40%     { transform: translateX(6px); }
+    60%     { transform: translateX(-4px); }
+    80%     { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.4s ease; }
+
+  .footer {
+    position: fixed;
+    bottom: 14px;
+    right: 18px;
+    z-index: 100;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .footer a {
+    font-weight: 700;
+    color: var(--muted);
+    text-decoration: none;
+    pointer-events: all;
+    transition: color 0.2s;
+  }
+  .footer a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+
+<canvas id="matrix-canvas"></canvas>
+<div class="scanlines"></div>
+<footer class="footer">by <a href="http://github.com/KevinRodriguez/feliz-mes" target="_blank" rel="noopener">Kevin Rodriguez</a></footer>
+
+<!-- Page 1: name lock -->
+<section class="page active fade-in" id="page-lock">
+  <div class="card">
+    <div class="card-corner tl"></div><div class="card-corner tr"></div>
+    <div class="card-corner bl"></div><div class="card-corner br"></div>
+
+    <div class="lock-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="11" width="18" height="11" rx="3" ry="3"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+
+    <h1>Esto se desbloquea<br>con tu nombre <span class="heart">❤</span></h1>
+    <p class="sub" style="margin-top:8px; margin-bottom:24px;"></p>
+
+    <div class="name-input-wrap">
+      <input
+        class="name-input"
+        id="name-input"
+        type="text"
+        placeholder="escribe tu nombre..."
+        autocomplete="off"
+        onkeydown="if(event.key==='Enter') tryEnter()"
+      />
+      <div class="error-msg" id="error-msg">Este mensaje no es para ti.</div>
+    </div>
+
+    <button class="btn" id="enter-btn" onclick="tryEnter()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+        <polyline points="10 17 15 12 10 7"/>
+        <line x1="15" y1="12" x2="3" y2="12"/>
+      </svg>
+      Entrar
+    </button>
+  </div>
+</section>
+
+<!-- Page 2: activity roulette -->
+<section class="page" id="page-roulette">
+  <div class="card fade-in">
+    <div class="card-corner tl"></div><div class="card-corner tr"></div>
+    <div class="card-corner bl"></div><div class="card-corner br"></div>
+
+    <div class="big-text">Escoje una cita 🥳 y haremos...</div>
+
+    <div class="divider"></div>
+
+    <div class="roulette-wrap">
+      <div class="roulette-window">
+        <div class="center-line-top"></div>
+        <div class="center-line-bottom"></div>
+        <div class="roulette-track" id="roulette-track"></div>
+      </div>
+      <div class="roulette-btn-row">
+        <button class="btn" id="spin-btn" onclick="spinRoulette()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          girar
+        </button>
+        <button class="btn btn-accent" id="confirm-roulette-btn" onclick="confirmRoulette()" style="display:none">
+          elegir
+        </button>
+      </div>
+    </div>
+
+    <div id="roulette-result" style="display:none">
+      <div class="result-badge" id="result-badge"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Page 3: time picker -->
+<section class="page" id="page-time">
+  <div class="card fade-in">
+    <div class="card-corner tl"></div><div class="card-corner tr"></div>
+    <div class="card-corner bl"></div><div class="card-corner br"></div>
+
+    <h1>¿A qué hora<br>puedes estar lista? <span class="heart">✦</span></h1>
+
+    <div class="time-options" id="time-options"></div>
+
+    <button class="btn btn-accent" id="confirm-time-btn" onclick="confirmTime()" disabled>
+      confirmar hora
+    </button>
+  </div>
+</section>
+
+<!-- Page 4: final reveal -->
+<section class="page" id="page-final">
+  <div class="card fade-in">
+    <div class="card-corner tl"></div><div class="card-corner tr"></div>
+    <div class="card-corner bl"></div><div class="card-corner br"></div>
+
+    <div class="final-msg">
+      ya eres hermosa,<br>
+      pero estate lista a las <span class="final-time" id="final-time-text">?</span>
+    </div>
+
+    <div class="final-addr">
+      <span class="sym">📍dirección:</span> tu casa (pasaré por ti xd)
+    </div>
+
+    <div class="gif-area">
+      <img src="assets/garu-pucca.gif" alt="❤" />
+    </div>
+  </div>
+</section>
+
+<script>
+const UNLOCK_NAME = 'marilions'; // expected input, lowercase
+const NOTIFY_ENDPOINT = ''; // Put your hidden notification URL here.
+
+// --- Matrix rain background ---
+(function () {
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx = canvas.getContext('2d');
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ01+-=><{}[]';
+  let cols, drops;
+
+  function init() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols = Math.floor(canvas.width / 13);
+    drops = Array(cols).fill(1);
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#e05555';
+    ctx.font = '13px JetBrains Mono, monospace';
+    for (let i = 0; i < drops.length; i++) {
+      ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 13, drops[i] * 13);
+      if (drops[i] * 13 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+
+  init();
+  setInterval(draw, 50);
+  window.addEventListener('resize', init);
+})();
+
+// --- Page transitions ---
+function goTo(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(id);
+  target.classList.add('active');
+  target.style.animation = 'none';
+  void target.offsetWidth; // force reflow to restart animation
+  target.style.animation = 'fadeUp 0.5s ease forwards';
+  window.scrollTo(0, 0);
+}
+
+// --- Name gate ---
+function tryEnter() {
+  const val = document.getElementById('name-input').value.trim().toLowerCase();
+  const errEl = document.getElementById('error-msg');
+  const card = document.querySelector('#page-lock .card');
+
+  if (val === UNLOCK_NAME) {
+    errEl.classList.remove('show');
+    goTo('page-roulette');
+    buildRoulette();
+  } else {
+    errEl.classList.add('show');
+    card.classList.remove('shake');
+    void card.offsetWidth;
+    card.classList.add('shake');
+  }
+}
+
+// --- Roulette ---
+const OPTIONS = [
+  { label: '🍸  Micheladas', value: 'Micheladas' },
+  { label: '🍺  Cervezas', value: 'Cervezas' },
+  { label: '🍽  cena', value: 'cena' },
+  { label: '🍷  vino', value: 'vino' },
+  { label: '🏠❤️🍳  Comida en casa', value: 'Comida en casa' },
+  {
+    label: '<span class="co-flag" aria-label="Bandera de Colombia"><span></span><span></span><span></span></span> Partido Selección Colombia',
+    value: 'Partido Selección Colombia'
+  }
+];
+
+let rouletteResult = null;
+let spinning = false;
+let currentIndex = 0;
+
+const ITEM_H = 64;
+const WIN_H = 192;  // visible height = 3 items
+const REPEATS = 8;  // pool size to allow long spins without running out
+
+function optionLabel(option) {
+  return option.label || option;
+}
+
+function optionValue(option) {
+  return option.value || option;
+}
+
+function buildRoulette() {
+  const track = document.getElementById('roulette-track');
+  track.innerHTML = '';
+  track.style.transition = 'none';
+
+  const pool = [];
+  for (let r = 0; r < REPEATS; r++) OPTIONS.forEach(o => pool.push(o));
+  pool.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'roulette-item';
+    div.innerHTML = optionLabel(o);
+    track.appendChild(div);
+  });
+
+  currentIndex = OPTIONS.length * 2;
+  applyPos(false);
+}
+
+function applyPos(animated, duration) {
+  const track = document.getElementById('roulette-track');
+  const offset = currentIndex * ITEM_H - (WIN_H / 2 - ITEM_H / 2);
+  track.style.transition = animated
+    ? `transform ${duration || 0.12}s cubic-bezier(0.25,0.46,0.45,0.94)`
+    : 'none';
+  track.style.transform = `translateY(-${offset}px)`;
+  updateClasses();
+}
+
+function updateClasses() {
+  document.querySelectorAll('.roulette-item').forEach((el, i) => {
+    el.classList.remove('selected', 'near');
+    if (i === currentIndex) el.classList.add('selected');
+    else if (Math.abs(i - currentIndex) === 1) el.classList.add('near');
+  });
+}
+
+function spinRoulette() {
+  if (spinning) return;
+  spinning = true;
+
+  document.getElementById('spin-btn').disabled = true;
+  document.getElementById('confirm-roulette-btn').style.display = 'none';
+  document.getElementById('roulette-result').style.display = 'none';
+
+  buildRoulette();
+
+  const loops = 4 + Math.floor(Math.random() * 2);
+  const extra = Math.floor(Math.random() * OPTIONS.length);
+  const totalItems = OPTIONS.length * loops + extra;
+  const targetIndex = currentIndex + totalItems;
+  const spinDuration = 3.0 + Math.random() * 0.8;
+
+  // Two rAF calls ensure transition is applied after the DOM settles
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      currentIndex = targetIndex;
+      const offset = currentIndex * ITEM_H - (WIN_H / 2 - ITEM_H / 2);
+      const track = document.getElementById('roulette-track');
+      track.style.transition = `transform ${spinDuration}s cubic-bezier(0.12, 0.8, 0.3, 1.0)`;
+      track.style.transform = `translateY(-${offset}px)`;
+
+      const interval = setInterval(updateClasses, 60);
+      setTimeout(() => {
+        clearInterval(interval);
+        updateClasses();
+        endSpin();
+      }, spinDuration * 1000 + 50);
+    });
+  });
+}
+
+function endSpin() {
+  spinning = false;
+  rouletteResult = OPTIONS[currentIndex % OPTIONS.length];
+  document.getElementById('spin-btn').disabled = false;
+  document.getElementById('confirm-roulette-btn').style.display = 'inline-flex';
+}
+
+function confirmRoulette() {
+  if (!rouletteResult) return;
+  const badge = document.getElementById('result-badge');
+  badge.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> ${optionLabel(rouletteResult)}`;
+  document.getElementById('roulette-result').style.display = 'block';
+  document.getElementById('confirm-roulette-btn').style.display = 'none';
+  setTimeout(() => { buildTimePicker(); goTo('page-time'); }, 900);
+}
+
+// --- Time picker ---
+const TIMES = ['7pm', '8pm', '9pm', '10pm'];
+let selectedTime = null;
+
+function buildTimePicker() {
+  const container = document.getElementById('time-options');
+  container.innerHTML = '';
+  selectedTime = null;
+  document.getElementById('confirm-time-btn').disabled = true;
+
+  TIMES.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'time-option';
+    div.innerHTML = `<div class="radio-dot"></div><span class="time-label">${t}</span>`;
+    div.onclick = () => {
+      document.querySelectorAll('.time-option').forEach(o => o.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedTime = t;
+      document.getElementById('confirm-time-btn').disabled = false;
+    };
+    container.appendChild(div);
+  });
+}
+
+function confirmTime() {
+  if (!selectedTime) return;
+  document.getElementById('final-time-text').textContent = `${selectedTime}!`;
+  saveChoiceRecord();
+  goTo('page-final');
+}
+
+function getChoiceMessage() {
+  return `Escogió: ${optionValue(rouletteResult) || 'sorpresa'} a las ${selectedTime || 'hora por confirmar'}`;
+}
+
+function getChoicePayload() {
+  return {
+    plan: optionValue(rouletteResult),
+    hora: selectedTime,
+    mensaje: getChoiceMessage()
+  };
+}
+
+function getChoiceRecord() {
+  return {
+    fecha: new Date().toLocaleString('es-CO'),
+    texto: JSON.stringify(getChoicePayload(), null, 2)
+  };
+}
+
+function saveChoiceRecord() {
+  const record = getChoiceRecord();
+  const stored = JSON.parse(localStorage.getItem('dateChoices') || '[]');
+  stored.push(record);
+  localStorage.setItem('dateChoices', JSON.stringify(stored));
+
+  sendChoiceNotice(record);
+}
+
+function sendChoiceNotice(record) {
+  if (!NOTIFY_ENDPOINT.trim()) return;
+
+  fetch(NOTIFY_ENDPOINT, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(record)
+  }).catch(() => {});
+}
+
+buildRoulette();
+</script>
+</body>
+</html>
